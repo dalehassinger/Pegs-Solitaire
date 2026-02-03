@@ -56,52 +56,28 @@
   };
 
   function deal() {
-    // Build a solvable layout with randomness in suits and column order.
-    const deck = buildDeck();
-    const used = new Set();
-    const takeCard = ({ color, rank }) => {
-      const pool = deck.filter(
-        c => !used.has(`${c.suit}${c.rank}`) && (color === 'red' ? isRed(c.suit) : !isRed(c.suit)) && c.rank === rank
-      );
-      const choice = randomChoice(pool);
-      used.add(`${choice.suit}${choice.rank}`);
-      return { ...choice, faceUp: true };
-    };
-
-    // Build descending alternating columns (always winnable) but randomize suits and column order.
-    const tableau = [[], [], [], [], [], [], []];
-    const startRed = Math.random() < 0.5;
-    const colorAtDepth = depth =>
-      startRed ? (depth % 2 === 0 ? 'red' : 'black') : (depth % 2 === 0 ? 'black' : 'red');
-
+    // Random but playable: shuffle deck, deal standard tableau, make all tableau cards face-up,
+    // and bias stock to start with low ranks.
+    const deck = shuffleArray(buildDeck());
+    state.tableau = [[], [], [], [], [], [], []];
     for (let col = 0; col < 7; col += 1) {
-      for (let depth = 0; depth <= col; depth += 1) {
-        const rank = 13 - depth; // descending from King
-        const color = colorAtDepth(depth);
-        tableau[col].push(takeCard({ color, rank }));
+      for (let row = 0; row <= col; row += 1) {
+        const card = deck.pop();
+        card.faceUp = true;
+        state.tableau[col].push(card);
       }
     }
 
-    shuffleArray(tableau); // randomize which column gets which descending stack
-
-    // Remaining cards go to stock: shuffle suits within each rank to add randomness while keeping solvable order.
-    const stock = [];
-    for (let rank = 1; rank <= 13; rank += 1) {
-      const byRank = suits
-        .map(suit => ({ suit, rank, faceUp: false }))
-        .filter(c => !used.has(`${c.suit}${c.rank}`));
-      shuffleArray(byRank);
-      stock.push(...byRank);
-    }
-    state.stock = stock.reverse(); // draw uses pop()
+    // Sort remaining stock ascending by rank to surface aces early, then reverse because we draw with pop().
+    deck.sort((a, b) => a.rank - b.rank || a.suit.localeCompare(b.suit));
+    state.stock = deck.reverse().map(c => ({ ...c, faceUp: false }));
 
     state.waste = [];
     state.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
-    state.tableau = tableau;
     state.selected = null;
 
     render();
-    setStatus(`Game #${state.gameNumber} — winnable deal with random suits.`);
+    setStatus(`Game #${state.gameNumber} — shuffled, face-up tableau, aces first in stock.`);
   }
 
   // Rendering helpers

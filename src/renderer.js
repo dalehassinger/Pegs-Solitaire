@@ -28,6 +28,15 @@
     return r.toString();
   };
 
+  const randomChoice = arr => arr[Math.floor(Math.random() * arr.length)];
+  const shuffleArray = arr => {
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
   const buildDeck = () => {
     const deck = [];
     for (const suit of suits) {
@@ -47,44 +56,44 @@
   };
 
   function deal() {
-    // Build a hand-crafted, winnable layout that still varies by suit assignment.
+    // Build a solvable layout with randomness in suits and column order.
     const deck = buildDeck();
     const used = new Set();
-    const card = (suit, rank, faceUp = true) => {
-      used.add(`${suit}${rank}`);
-      return { suit, rank, faceUp };
+    const takeCard = ({ color, rank }) => {
+      const pool = deck.filter(
+        c => !used.has(`${c.suit}${c.rank}`) && (color === 'red' ? isRed(c.suit) : !isRed(c.suit)) && c.rank === rank
+      );
+      const choice = randomChoice(pool);
+      used.add(`${choice.suit}${choice.rank}`);
+      return { ...choice, faceUp: true };
     };
 
-    // Deterministic tableau pattern with descending alternating colors, all face-up.
-    const tableauPattern = [
-      ['♠13', '♥12', '♠11', '♥10', '♠9', '♥8', '♠7'],       // 7 cards
-      ['♥13', '♠12', '♥11', '♠10', '♥9', '♠8'],             // 6
-      ['♣13', '♦12', '♣11', '♦10', '♣9'],                   // 5
-      ['♦13', '♣12', '♦11', '♣10'],                         // 4
-      ['♠6', '♥5', '♠4'],                                   // 3
-      ['♥6', '♠5'],                                         // 2
-      ['♣6']                                                // 1
-    ];
+    // Build descending alternating columns (always winnable) but randomize suits and column order.
+    const tableau = [[], [], [], [], [], [], []];
+    const startRed = Math.random() < 0.5;
+    const colorAtDepth = depth =>
+      startRed ? (depth % 2 === 0 ? 'red' : 'black') : (depth % 2 === 0 ? 'black' : 'red');
 
-    const tableau = tableauPattern.map(col =>
-      col.map(code => {
-        const suit = code[0];
-        const rank = Number(code.slice(1));
-        return card(suit, rank, true);
-      })
-    );
-
-    // Remaining cards go to stock in ascending rank order so Aces surface first.
-    const stock = [];
-    for (let rank = 1; rank <= 13; rank += 1) {
-      for (const suit of suits) {
-        const key = `${suit}${rank}`;
-        if (used.has(key)) continue;
-        stock.push({ suit, rank, faceUp: false });
+    for (let col = 0; col < 7; col += 1) {
+      for (let depth = 0; depth <= col; depth += 1) {
+        const rank = 13 - depth; // descending from King
+        const color = colorAtDepth(depth);
+        tableau[col].push(takeCard({ color, rank }));
       }
     }
-    // Draw uses pop(), so reverse to put lowest ranks on top.
-    state.stock = stock.reverse();
+
+    shuffleArray(tableau); // randomize which column gets which descending stack
+
+    // Remaining cards go to stock: shuffle suits within each rank to add randomness while keeping solvable order.
+    const stock = [];
+    for (let rank = 1; rank <= 13; rank += 1) {
+      const byRank = suits
+        .map(suit => ({ suit, rank, faceUp: false }))
+        .filter(c => !used.has(`${c.suit}${c.rank}`));
+      shuffleArray(byRank);
+      stock.push(...byRank);
+    }
+    state.stock = stock.reverse(); // draw uses pop()
 
     state.waste = [];
     state.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
@@ -92,7 +101,7 @@
     state.selected = null;
 
     render();
-    setStatus(`Game #${state.gameNumber} — winnable deal. Good luck!`);
+    setStatus(`Game #${state.gameNumber} — winnable deal with random suits.`);
   }
 
   // Rendering helpers

@@ -633,6 +633,8 @@
     let lastFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
     let lastFaceUp = faceUpCount();
     let recycledSinceProgress = false;
+    let recycleStalls = 0;
+    let stoppedForStalls = false;
 
     while (iterations < 2000) {
       const step = performOneAutoStep();
@@ -649,8 +651,13 @@
         lastFoundation = nowFoundation;
         lastFaceUp = nowFaceUp;
         if (!progressed && recycledSinceProgress) {
-          // Completed a full stock cycle without revealing or placing anything new.
-          break;
+          recycleStalls += 1;
+          if (recycleStalls >= 3) {
+            stoppedForStalls = true;
+            break;
+          }
+        } else if (progressed) {
+          recycleStalls = 0;
         }
         recycledSinceProgress = !progressed;
       } else if (step.progress) {
@@ -662,7 +669,11 @@
     if (Object.values(state.foundations).every(p => p.length === 13)) {
       setStatus('Autoplay: You win! 🎉');
     } else if (moved) {
-      setStatus('Autoplay finished available moves.');
+      if (stoppedForStalls) {
+        setStatus('Autoplay stopped after 3 full stock cycles with no progress.');
+      } else {
+        setStatus('Autoplay finished available moves.');
+      }
     } else {
       setStatus('Autoplay found nothing to do.');
     }

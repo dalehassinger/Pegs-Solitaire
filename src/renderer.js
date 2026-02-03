@@ -575,7 +575,8 @@
     if (!state.waste.length) return false;
     const card = state.waste[state.waste.length - 1];
     for (let dest = 0; dest < state.tableau.length; dest += 1) {
-      if (state.tableau[dest].length === 0) continue; // Avoid shuffling kings between empty columns during autoplay
+      // Allow placing a King into an empty column, but avoid empty-to-empty shuffling loops.
+      if (state.tableau[dest].length === 0 && card.rank !== 13) continue;
       if (canPlaceOnTableau(card, state.tableau[dest])) {
         state.waste.pop();
         state.tableau[dest].push(card);
@@ -593,7 +594,9 @@
         if (!card.faceUp) continue;
         for (let dest = 0; dest < state.tableau.length; dest += 1) {
           if (dest === src) continue;
-          if (state.tableau[dest].length === 0) continue; // prevent empty↔empty king shuffling
+          // Allow moving a King (or stack starting with King) into an empty column once,
+          // but prevent shuffling between empty columns.
+          if (state.tableau[dest].length === 0 && card.rank !== 13) continue;
           if (canPlaceOnTableau(card, state.tableau[dest])) {
             const moving = col.splice(i);
             state.tableau[dest].push(...moving);

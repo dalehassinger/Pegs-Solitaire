@@ -438,6 +438,59 @@
     }
   }
 
+  function canMoveToFoundation(card) {
+    const pile = state.foundations[card.suit];
+    return card.rank === pile.length + 1;
+  }
+
+  function canPlaceOnTableau(card, dest) {
+    if (dest.length === 0) return card.rank === 13;
+    const top = dest[dest.length - 1];
+    return top.faceUp && isRed(top.suit) !== isRed(card.suit) && top.rank === card.rank + 1;
+  }
+
+  function hasMovesAvailable() {
+    // 1) If the stock has cards, drawing is always a move.
+    if (state.stock.length > 0) return true;
+
+    // 2) Waste top → foundation / tableau.
+    if (state.waste.length) {
+      const wasteTop = state.waste[state.waste.length - 1];
+      if (canMoveToFoundation(wasteTop)) return true;
+      if (state.tableau.some(col => canPlaceOnTableau(wasteTop, col))) return true;
+    }
+
+    // 3) Tableau top → foundation.
+    for (const col of state.tableau) {
+      if (!col.length) continue;
+      const top = col[col.length - 1];
+      if (top.faceUp && canMoveToFoundation(top)) return true;
+    }
+
+    // 4) Tableau stack → tableau destination (any face-up lead).
+    for (let src = 0; src < state.tableau.length; src += 1) {
+      const col = state.tableau[src];
+      for (let i = 0; i < col.length; i += 1) {
+        const card = col[i];
+        if (!card.faceUp) continue;
+        const lead = card;
+        for (let dest = 0; dest < state.tableau.length; dest += 1) {
+          if (dest === src) continue;
+          if (canPlaceOnTableau(lead, state.tableau[dest])) return true;
+        }
+        break; // only need the first face-up segment in this column
+      }
+    }
+
+    // 5) Face-down top card that can be flipped.
+    if (state.tableau.some(col => col.length && !col[col.length - 1].faceUp)) return true;
+
+    // 6) Waste recycle when stock empty but waste not empty.
+    if (state.stock.length === 0 && state.waste.length > 0) return true;
+
+    return false;
+  }
+
   document.getElementById('new-game').addEventListener('click', () => {
     state.gameNumber += 1;
     deal();
@@ -448,6 +501,10 @@
   });
 
   document.getElementById('auto-foundation').addEventListener('click', autoMoveToFoundation);
+  document.getElementById('check-moves').addEventListener('click', () => {
+    const movesAvailable = hasMovesAvailable();
+    setStatus(movesAvailable ? 'Moves available.' : 'No moves remain — start a new game.');
+  });
 
   // Initialize
   deal();

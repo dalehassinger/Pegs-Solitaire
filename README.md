@@ -5,7 +5,8 @@ Classic Klondike Solitaire built with Electron so it runs on macOS, Windows, and
 ## Gameplay
 - Standard Klondike rules: build down in alternating colors on the tableau; build foundations Ace → King by suit.
 - Click stock to draw; click waste to select; click/empty tableau columns to place Kings; click foundation or top card to place the next rank.
-- “Auto Move” sends obvious cards to foundations; hints highlight valid targets when a card/stack is selected.
+- “Auto Move” now keeps moving until no more obvious foundation plays remain; hints highlight valid targets when a card/stack is selected.
+- “Check Moves” tells you whether any legal moves are left (without revealing them).
 
 ## Prerequisites
 - Node.js 18+ and npm.

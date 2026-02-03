@@ -452,45 +452,7 @@
   const cardName = card => `${rankLabel(card.rank)}${card.suit}`;
 
   function hasMovesAvailable() {
-    // 1) If the stock has cards, drawing is always a move.
-    if (state.stock.length > 0) return true;
-
-    // 2) Waste top → foundation / tableau.
-    if (state.waste.length) {
-      const wasteTop = state.waste[state.waste.length - 1];
-      if (canMoveToFoundation(wasteTop)) return true;
-      if (state.tableau.some(col => canPlaceOnTableau(wasteTop, col))) return true;
-    }
-
-    // 3) Tableau top → foundation.
-    for (const col of state.tableau) {
-      if (!col.length) continue;
-      const top = col[col.length - 1];
-      if (top.faceUp && canMoveToFoundation(top)) return true;
-    }
-
-    // 4) Tableau stack → tableau destination (any face-up lead).
-    for (let src = 0; src < state.tableau.length; src += 1) {
-      const col = state.tableau[src];
-      for (let i = 0; i < col.length; i += 1) {
-        const card = col[i];
-        if (!card.faceUp) continue;
-        const lead = card;
-        for (let dest = 0; dest < state.tableau.length; dest += 1) {
-          if (dest === src) continue;
-          if (canPlaceOnTableau(lead, state.tableau[dest])) return true;
-        }
-        break; // only need the first face-up segment in this column
-      }
-    }
-
-    // 5) Face-down top card that can be flipped.
-    if (state.tableau.some(col => col.length && !col[col.length - 1].faceUp)) return true;
-
-    // 6) Waste recycle when stock empty but waste not empty.
-    if (state.stock.length === 0 && state.waste.length > 0) return true;
-
-    return false;
+    return Boolean(findHintMove());
   }
 
   function findHintMove() {
@@ -546,6 +508,14 @@
 
     return null;
   }
+
+  const faceUpCount = () => {
+    const tableauUp = state.tableau.reduce(
+      (sum, col) => sum + col.filter(c => c.faceUp).length,
+      0
+    );
+    return tableauUp + state.waste.length;
+  };
 
   function drawFromStock() {
     if (state.stock.length === 0) return false;
@@ -637,23 +607,43 @@
   }
 
   function performOneAutoStep() {
-    return (
-      moveWasteToFoundation() ||
-      moveTableauTopToFoundation() ||
-      moveWasteToTableau() ||
-      moveTableauStack() ||
-      flipTopFaceDown() ||
-      drawFromStock() ||
-      recycleWasteToStock()
-    );
+    if (moveWasteToFoundation()) return { moved: true, progress: true, recycled: false };
+    if (moveTableauTopToFoundation()) return { moved: true, progress: true, recycled: false };
+    if (moveWasteToTableau()) return { moved: true, progress: true, recycled: false };
+    if (moveTableauStack()) return { moved: true, progress: true, recycled: false };
+    if (flipTopFaceDown()) return { moved: true, progress: true, recycled: false };
+    if (drawFromStock()) return { moved: true, progress: true, recycled: false };
+    if (recycleWasteToStock()) return { moved: true, progress: false, recycled: true };
+    return { moved: false, progress: false, recycled: false };
   }
 
   function autoplayGame() {
     let iterations = 0;
     let moved = false;
-    while (iterations < 500 && performOneAutoStep()) {
+    let lastFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
+    let lastFaceUp = faceUpCount();
+    let recycledSinceProgress = false;
+
+    while (iterations < 2000) {
+      const step = performOneAutoStep();
+      if (!step.moved) break;
       moved = true;
       iterations += 1;
+
+      if (step.recycled) {
+        const nowFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
+        const nowFaceUp = faceUpCount();
+        const progressed = nowFoundation > lastFoundation || nowFaceUp > lastFaceUp;
+        lastFoundation = nowFoundation;
+        lastFaceUp = nowFaceUp;
+        if (!progressed && recycledSinceProgress) {
+          // Completed a full stock cycle without revealing or placing anything new.
+          break;
+        }
+        recycledSinceProgress = !progressed;
+      } else if (step.progress) {
+        recycledSinceProgress = false;
+      }
     }
     state.selected = null;
     render();

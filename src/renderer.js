@@ -16,6 +16,8 @@
     gameNumber: 1
   };
 
+  let isAutoplaying = false;
+
   // Utilities
   const isRed = suit => suit === '♥' || suit === '♦';
   const rankLabel = r => {
@@ -450,6 +452,7 @@
   }
 
   const cardName = card => `${rankLabel(card.rank)}${card.suit}`;
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   function hasMovesAvailable() {
     return Boolean(findHintMove());
@@ -617,7 +620,14 @@
     return { moved: false, progress: false, recycled: false };
   }
 
-  function autoplayGame() {
+  async function autoplayGame() {
+    if (isAutoplaying) {
+      setStatus('Autoplay already running.');
+      return;
+    }
+    isAutoplaying = true;
+    setStatus('Autoplay running...');
+
     let iterations = 0;
     let moved = false;
     let lastFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
@@ -629,6 +639,8 @@
       if (!step.moved) break;
       moved = true;
       iterations += 1;
+      render();
+      await sleep(1000);
 
       if (step.recycled) {
         const nowFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
@@ -654,6 +666,7 @@
     } else {
       setStatus('Autoplay found nothing to do.');
     }
+    isAutoplaying = false;
   }
 
   document.getElementById('new-game').addEventListener('click', () => {

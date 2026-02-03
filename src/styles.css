@@ -196,7 +196,6 @@ button:hover {
 }
 
 .pile.empty::before,
-.foundation.empty::before,
 .tableau.empty::before {
   content: "Empty";
   color: rgba(255, 255, 255, 0.25);
@@ -205,6 +204,12 @@ button:hover {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.foundation.empty::before {
+  content: attr(data-foundation);
+  font-size: 1.6rem;
+  color: #c7d4ed;
 }
 
 .spacer {

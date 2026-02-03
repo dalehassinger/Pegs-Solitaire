@@ -571,22 +571,24 @@
     return false;
   }
 
-  function moveWasteToTableau() {
+  function moveWasteToTableau({ skipKingToEmpty } = {}) {
     if (!state.waste.length) return false;
     const card = state.waste[state.waste.length - 1];
     for (let dest = 0; dest < state.tableau.length; dest += 1) {
       // Allow placing a King into an empty column, but avoid empty-to-empty shuffling loops.
-      if (state.tableau[dest].length === 0 && card.rank !== 13) continue;
+      const destEmpty = state.tableau[dest].length === 0;
+      if (destEmpty && card.rank !== 13) continue;
+      if (destEmpty && card.rank === 13 && skipKingToEmpty) continue;
       if (canPlaceOnTableau(card, state.tableau[dest])) {
         state.waste.pop();
         state.tableau[dest].push(card);
-        return true;
+        return { moved: true, kingToEmpty: destEmpty && card.rank === 13 };
       }
     }
-    return false;
+    return { moved: false, kingToEmpty: false };
   }
 
-  function moveTableauStack() {
+  function moveTableauStack({ skipKingToEmpty } = {}) {
     for (let src = 0; src < state.tableau.length; src += 1) {
       const col = state.tableau[src];
       for (let i = 0; i < col.length; i += 1) {
@@ -596,18 +598,20 @@
           if (dest === src) continue;
           // Allow moving a King (or stack starting with King) into an empty column once,
           // but prevent shuffling between empty columns.
-          if (state.tableau[dest].length === 0 && card.rank !== 13) continue;
+          const destEmpty = state.tableau[dest].length === 0;
+          if (destEmpty && card.rank !== 13) continue;
+          if (destEmpty && card.rank === 13 && skipKingToEmpty) continue;
           if (canPlaceOnTableau(card, state.tableau[dest])) {
             const moving = col.splice(i);
             state.tableau[dest].push(...moving);
             flipTailIfNeeded(src);
-            return true;
+            return { moved: true, kingToEmpty: destEmpty && card.rank === 13 };
           }
         }
         break;
       }
     }
-    return false;
+    return { moved: false, kingToEmpty: false };
   }
 
   function flipTopFaceDown() {
@@ -623,15 +627,17 @@
     return false;
   }
 
-  function performOneAutoStep() {
-    if (moveWasteToFoundation()) return { moved: true, progress: true, recycled: false };
-    if (moveTableauTopToFoundation()) return { moved: true, progress: true, recycled: false };
-    if (moveWasteToTableau()) return { moved: true, progress: true, recycled: false };
-    if (moveTableauStack()) return { moved: true, progress: true, recycled: false };
-    if (flipTopFaceDown()) return { moved: true, progress: true, recycled: false };
-    if (drawFromStock()) return { moved: true, progress: true, recycled: false };
-    if (recycleWasteToStock()) return { moved: true, progress: false, recycled: true };
-    return { moved: false, progress: false, recycled: false };
+  function performOneAutoStep({ skipKingToEmpty }) {
+    if (moveWasteToFoundation()) return { moved: true, progress: true, recycled: false, kingToEmpty: false };
+    if (moveTableauTopToFoundation()) return { moved: true, progress: true, recycled: false, kingToEmpty: false };
+    const wasteRes = moveWasteToTableau({ skipKingToEmpty });
+    if (wasteRes.moved) return { moved: true, progress: true, recycled: false, kingToEmpty: wasteRes.kingToEmpty };
+    const tabRes = moveTableauStack({ skipKingToEmpty });
+    if (tabRes.moved) return { moved: true, progress: true, recycled: false, kingToEmpty: tabRes.kingToEmpty };
+    if (flipTopFaceDown()) return { moved: true, progress: true, recycled: false, kingToEmpty: false };
+    if (drawFromStock()) return { moved: true, progress: true, recycled: false, kingToEmpty: false };
+    if (recycleWasteToStock()) return { moved: true, progress: false, recycled: true, kingToEmpty: false };
+    return { moved: false, progress: false, recycled: false, kingToEmpty: false };
   }
 
   async function autoplayGame() {
@@ -651,9 +657,12 @@
     let cyclesWithoutProgress = 0;
     let stoppedForStalls = false;
 
+    let kingToEmptyUsed = false;
+
     while (iterations < 2000) {
-      const step = performOneAutoStep();
+      const step = performOneAutoStep({ skipKingToEmpty: kingToEmptyUsed });
       if (!step.moved) break;
+      if (step.kingToEmpty) kingToEmptyUsed = true;
       moved = true;
       iterations += 1;
       render();

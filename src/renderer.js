@@ -56,28 +56,22 @@
   };
 
   function deal() {
-    // Random but playable: shuffle deck, deal standard tableau, make all tableau cards face-up,
-    // and bias stock to start with low ranks.
-    const deck = shuffleArray(buildDeck());
+    const deck = shuffle(buildDeck());
+    state.stock = deck;
+    state.waste = [];
+    state.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
     state.tableau = [[], [], [], [], [], [], []];
+    state.selected = null;
+
     for (let col = 0; col < 7; col += 1) {
       for (let row = 0; row <= col; row += 1) {
-        const card = deck.pop();
-        card.faceUp = true;
+        const card = state.stock.pop();
+        card.faceUp = row === col;
         state.tableau[col].push(card);
       }
     }
-
-    // Sort remaining stock ascending by rank to surface aces early, then reverse because we draw with pop().
-    deck.sort((a, b) => a.rank - b.rank || a.suit.localeCompare(b.suit));
-    state.stock = deck.reverse().map(c => ({ ...c, faceUp: false }));
-
-    state.waste = [];
-    state.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
-    state.selected = null;
-
     render();
-    setStatus(`Game #${state.gameNumber} — shuffled, face-up tableau, aces first in stock.`);
+    setStatus(`Game #${state.gameNumber} — good luck!`);
   }
 
   // Rendering helpers

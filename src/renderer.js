@@ -562,9 +562,10 @@
     setStatus(movesAvailable ? 'Moves available.' : 'No moves remain — start a new game.');
   });
 
-  // Secret hint: Ctrl+Shift+M shows one available move without executing it.
+  // Secret hint: Ctrl/Cmd+Shift+M shows one available move without executing it.
   window.addEventListener('keydown', e => {
-    if (e.ctrlKey && e.shiftKey && e.code === 'KeyM') {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyM') {
+      e.preventDefault();
       const hint = findHintMove();
       setStatus(hint || 'No moves remain — start a new game.');
     }

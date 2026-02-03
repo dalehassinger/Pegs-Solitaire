@@ -449,6 +449,8 @@
     return top.faceUp && isRed(top.suit) !== isRed(card.suit) && top.rank === card.rank + 1;
   }
 
+  const cardName = card => `${rankLabel(card.rank)}${card.suit}`;
+
   function hasMovesAvailable() {
     // 1) If the stock has cards, drawing is always a move.
     if (state.stock.length > 0) return true;
@@ -491,6 +493,60 @@
     return false;
   }
 
+  function findHintMove() {
+    // Stock draw
+    if (state.stock.length > 0) {
+      return 'Draw from stock.';
+    }
+
+    // Waste top -> foundation / tableau
+    if (state.waste.length) {
+      const wasteTop = state.waste[state.waste.length - 1];
+      if (canMoveToFoundation(wasteTop)) return `Move ${cardName(wasteTop)} from waste to foundation.`;
+      const destIdx = state.tableau.findIndex(col => canPlaceOnTableau(wasteTop, col));
+      if (destIdx !== -1) return `Move ${cardName(wasteTop)} from waste to tableau column ${destIdx + 1}.`;
+    }
+
+    // Tableau top -> foundation
+    for (let colIdx = 0; colIdx < state.tableau.length; colIdx += 1) {
+      const col = state.tableau[colIdx];
+      if (!col.length) continue;
+      const top = col[col.length - 1];
+      if (top.faceUp && canMoveToFoundation(top)) {
+        return `Move ${cardName(top)} from tableau column ${colIdx + 1} to foundation.`;
+      }
+    }
+
+    // Tableau stack -> tableau destination
+    for (let src = 0; src < state.tableau.length; src += 1) {
+      const col = state.tableau[src];
+      for (let i = 0; i < col.length; i += 1) {
+        const card = col[i];
+        if (!card.faceUp) continue;
+        for (let dest = 0; dest < state.tableau.length; dest += 1) {
+          if (dest === src) continue;
+          if (canPlaceOnTableau(card, state.tableau[dest])) {
+            return `Move ${cardName(card)} and below from tableau ${src + 1} to tableau ${dest + 1}.`;
+          }
+        }
+        break;
+      }
+    }
+
+    // Flip a face-down top card
+    const flipIdx = state.tableau.findIndex(col => col.length && !col[col.length - 1].faceUp);
+    if (flipIdx !== -1) {
+      return `Flip the top face-down card in tableau column ${flipIdx + 1}.`;
+    }
+
+    // Waste recycle
+    if (state.stock.length === 0 && state.waste.length > 0) {
+      return 'Recycle waste back to stock.';
+    }
+
+    return null;
+  }
+
   document.getElementById('new-game').addEventListener('click', () => {
     state.gameNumber += 1;
     deal();
@@ -504,6 +560,14 @@
   document.getElementById('check-moves').addEventListener('click', () => {
     const movesAvailable = hasMovesAvailable();
     setStatus(movesAvailable ? 'Moves available.' : 'No moves remain — start a new game.');
+  });
+
+  // Secret hint: Ctrl+Shift+M shows one available move without executing it.
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.shiftKey && e.code === 'KeyM') {
+      const hint = findHintMove();
+      setStatus(hint || 'No moves remain — start a new game.');
+    }
   });
 
   // Initialize

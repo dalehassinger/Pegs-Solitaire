@@ -581,8 +581,11 @@
       for (let i = 0; i < col.length; i += 1) {
         const card = col[i];
         if (!card.faceUp) continue;
+        // Avoid pointless shuffling: if the top card is a King, don't move it to another empty column during autoplay.
+        const isTopKing = card.rank === 13 && i === col.length - 1;
         for (let dest = 0; dest < state.tableau.length; dest += 1) {
           if (dest === src) continue;
+          if (isTopKing && state.tableau[dest].length === 0) continue;
           if (canPlaceOnTableau(card, state.tableau[dest])) {
             const moving = col.splice(i);
             state.tableau[dest].push(...moving);

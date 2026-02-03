@@ -47,33 +47,34 @@
   };
 
   function deal() {
-    // Build a guaranteed-solvable layout: tableau fully face-up in valid descending alternating stacks,
-    // and stock ordered from aces upward to feed foundations. Suits vary to keep deals feeling fresh.
-    const all = buildDeck();
+    // Build a hand-crafted, winnable layout that still varies by suit assignment.
+    const deck = buildDeck();
     const used = new Set();
-    const takeCard = (color, rank) => {
-      const pool = all.filter(
-        c => !used.has(`${c.suit}${c.rank}`) && (color === 'red' ? isRed(c.suit) : !isRed(c.suit)) && c.rank === rank
-      );
-      const choice = pool[Math.floor(Math.random() * pool.length)];
-      used.add(`${choice.suit}${choice.rank}`);
-      return { ...choice, faceUp: true };
+    const card = (suit, rank, faceUp = true) => {
+      used.add(`${suit}${rank}`);
+      return { suit, rank, faceUp };
     };
 
-    const tableau = [[], [], [], [], [], [], []];
-    // Alternate colors starting with a random color for variety.
-    const startRed = Math.random() < 0.5;
-    const colorForIndex = idx => (startRed ? (idx % 2 === 0 ? 'red' : 'black') : (idx % 2 === 0 ? 'black' : 'red'));
+    // Deterministic tableau pattern with descending alternating colors, all face-up.
+    const tableauPattern = [
+      ['♠13', '♥12', '♠11', '♥10', '♠9', '♥8', '♠7'],       // 7 cards
+      ['♥13', '♠12', '♥11', '♠10', '♥9', '♠8'],             // 6
+      ['♣13', '♦12', '♣11', '♦10', '♣9'],                   // 5
+      ['♦13', '♣12', '♦11', '♣10'],                         // 4
+      ['♠6', '♥5', '♠4'],                                   // 3
+      ['♥6', '♠5'],                                         // 2
+      ['♣6']                                                // 1
+    ];
 
-    for (let col = 0; col < 7; col += 1) {
-      for (let depth = 0; depth <= col; depth += 1) {
-        const rank = 13 - depth; // descending from King
-        const color = colorForIndex(depth);
-        tableau[col].push(takeCard(color, rank));
-      }
-    }
+    const tableau = tableauPattern.map(col =>
+      col.map(code => {
+        const suit = code[0];
+        const rank = Number(code.slice(1));
+        return card(suit, rank, true);
+      })
+    );
 
-    // Remaining cards go to stock ordered by rank ascending to accelerate foundation play.
+    // Remaining cards go to stock in ascending rank order so Aces surface first.
     const stock = [];
     for (let rank = 1; rank <= 13; rank += 1) {
       for (const suit of suits) {
@@ -82,8 +83,9 @@
         stock.push({ suit, rank, faceUp: false });
       }
     }
+    // Draw uses pop(), so reverse to put lowest ranks on top.
+    state.stock = stock.reverse();
 
-    state.stock = stock.reverse(); // draw Aces first (top of stack is end)
     state.waste = [];
     state.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
     state.tableau = tableau;

@@ -632,8 +632,9 @@
     let moved = false;
     let lastFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
     let lastFaceUp = faceUpCount();
-    let recycledSinceProgress = false;
-    let recycleStalls = 0;
+    let foundationAtCycleStart = lastFoundation;
+    let faceUpAtCycleStart = lastFaceUp;
+    let cyclesWithoutProgress = 0;
     let stoppedForStalls = false;
 
     while (iterations < 2000) {
@@ -647,21 +648,23 @@
       if (step.recycled) {
         const nowFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
         const nowFaceUp = faceUpCount();
-        const progressed = nowFoundation > lastFoundation || nowFaceUp > lastFaceUp;
-        lastFoundation = nowFoundation;
-        lastFaceUp = nowFaceUp;
-        if (!progressed && recycledSinceProgress) {
-          recycleStalls += 1;
-          if (recycleStalls >= 3) {
+        const progressed = nowFoundation > foundationAtCycleStart || nowFaceUp > faceUpAtCycleStart;
+        foundationAtCycleStart = nowFoundation;
+        faceUpAtCycleStart = nowFaceUp;
+        if (progressed) {
+          cyclesWithoutProgress = 0;
+        } else {
+          cyclesWithoutProgress += 1;
+          if (cyclesWithoutProgress >= 3) {
             stoppedForStalls = true;
             break;
           }
-        } else if (progressed) {
-          recycleStalls = 0;
         }
-        recycledSinceProgress = !progressed;
+        lastFoundation = nowFoundation;
+        lastFaceUp = nowFaceUp;
       } else if (step.progress) {
-        recycledSinceProgress = false;
+        lastFoundation = Object.values(state.foundations).reduce((a, b) => a + b.length, 0);
+        lastFaceUp = faceUpCount();
       }
     }
     state.selected = null;

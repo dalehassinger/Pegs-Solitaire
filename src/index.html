@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peg's Solitaire</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="branding">
+        <div class="logo-mark">P</div>
+        <div>
+          <div class="title">Peg's Solitaire</div>
+          <div class="subtitle">In loving memory • Classic Klondike</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="new-game" class="pill">New Game</button>
+        <button id="auto-foundation" class="ghost">Auto Move</button>
+      </div>
+    </header>
+
+    <section class="status-row">
+      <div class="status-chip" id="status-text">Ready to play.</div>
+      <div class="status-chip subtle" id="platform-chip"></div>
+    </section>
+
+    <main class="board">
+      <div class="row stock-row">
+        <div class="pile-label">Stock</div>
+        <div class="pile" id="stock" aria-label="Stock pile"></div>
+        <div class="pile" id="waste" aria-label="Waste pile"></div>
+        <div class="spacer"></div>
+        <div class="pile-group foundations">
+          <div class="pile-label">Foundations</div>
+          <div class="foundation" data-foundation="♠" aria-label="Spades foundation"></div>
+          <div class="foundation" data-foundation="♥" aria-label="Hearts foundation"></div>
+          <div class="foundation" data-foundation="♦" aria-label="Diamonds foundation"></div>
+          <div class="foundation" data-foundation="♣" aria-label="Clubs foundation"></div>
+        </div>
+      </div>
+
+      <div class="row tableau-row">
+        <div class="pile-label">Tableau</div>
+        <div class="tableau" data-column="0"></div>
+        <div class="tableau" data-column="1"></div>
+        <div class="tableau" data-column="2"></div>
+        <div class="tableau" data-column="3"></div>
+        <div class="tableau" data-column="4"></div>
+        <div class="tableau" data-column="5"></div>
+        <div class="tableau" data-column="6"></div>
+      </div>
+    </main>
+
+    <footer class="foot">
+      <div>Drag or click cards to move. Click the stock to draw, click an empty column to move a King.</div>
+      <div class="foot-actions">
+        <button id="restart" class="ghost">Restart</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="renderer.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{
+  "name": "solitaire",
+  "version": "0.1.0",
+  "description": "Cross-platform Klondike Solitaire built with Electron.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "package": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "solitaire",
+    "game"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "build": {
+    "appId": "com.example.solitaire",
+    "productName": "Solitaire",
+    "files": [
+      "package.json",
+      "main.js",
+      "preload.js",
+      "src/**/*"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}

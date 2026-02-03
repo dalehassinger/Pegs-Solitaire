@@ -47,22 +47,50 @@
   };
 
   function deal() {
-    const deck = shuffle(buildDeck());
-    state.stock = deck;
-    state.waste = [];
-    state.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
-    state.tableau = [[], [], [], [], [], [], []];
-    state.selected = null;
+    // Build a guaranteed-solvable layout: tableau fully face-up in valid descending alternating stacks,
+    // and stock ordered from aces upward to feed foundations. Suits vary to keep deals feeling fresh.
+    const all = buildDeck();
+    const used = new Set();
+    const takeCard = (color, rank) => {
+      const pool = all.filter(
+        c => !used.has(`${c.suit}${c.rank}`) && (color === 'red' ? isRed(c.suit) : !isRed(c.suit)) && c.rank === rank
+      );
+      const choice = pool[Math.floor(Math.random() * pool.length)];
+      used.add(`${choice.suit}${choice.rank}`);
+      return { ...choice, faceUp: true };
+    };
+
+    const tableau = [[], [], [], [], [], [], []];
+    // Alternate colors starting with a random color for variety.
+    const startRed = Math.random() < 0.5;
+    const colorForIndex = idx => (startRed ? (idx % 2 === 0 ? 'red' : 'black') : (idx % 2 === 0 ? 'black' : 'red'));
 
     for (let col = 0; col < 7; col += 1) {
-      for (let row = 0; row <= col; row += 1) {
-        const card = state.stock.pop();
-        card.faceUp = row === col;
-        state.tableau[col].push(card);
+      for (let depth = 0; depth <= col; depth += 1) {
+        const rank = 13 - depth; // descending from King
+        const color = colorForIndex(depth);
+        tableau[col].push(takeCard(color, rank));
       }
     }
+
+    // Remaining cards go to stock ordered by rank ascending to accelerate foundation play.
+    const stock = [];
+    for (let rank = 1; rank <= 13; rank += 1) {
+      for (const suit of suits) {
+        const key = `${suit}${rank}`;
+        if (used.has(key)) continue;
+        stock.push({ suit, rank, faceUp: false });
+      }
+    }
+
+    state.stock = stock.reverse(); // draw Aces first (top of stack is end)
+    state.waste = [];
+    state.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
+    state.tableau = tableau;
+    state.selected = null;
+
     render();
-    setStatus(`Game #${state.gameNumber} — good luck!`);
+    setStatus(`Game #${state.gameNumber} — winnable deal. Good luck!`);
   }
 
   // Rendering helpers

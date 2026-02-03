@@ -547,6 +547,125 @@
     return null;
   }
 
+  function drawFromStock() {
+    if (state.stock.length === 0) return false;
+    const card = state.stock.pop();
+    card.faceUp = true;
+    state.waste.push(card);
+    return true;
+  }
+
+  function recycleWasteToStock() {
+    if (state.stock.length > 0 || state.waste.length === 0) return false;
+    while (state.waste.length) {
+      const card = state.waste.pop();
+      card.faceUp = false;
+      state.stock.push(card);
+    }
+    return true;
+  }
+
+  function moveWasteToFoundation() {
+    if (!state.waste.length) return false;
+    const card = state.waste[state.waste.length - 1];
+    if (!canMoveToFoundation(card)) return false;
+    state.waste.pop();
+    state.foundations[card.suit].push(card);
+    return true;
+  }
+
+  function moveTableauTopToFoundation() {
+    for (let colIdx = 0; colIdx < state.tableau.length; colIdx += 1) {
+      const col = state.tableau[colIdx];
+      if (!col.length) continue;
+      const top = col[col.length - 1];
+      if (top.faceUp && canMoveToFoundation(top)) {
+        state.tableau[colIdx].pop();
+        flipTailIfNeeded(colIdx);
+        state.foundations[top.suit].push(top);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function moveWasteToTableau() {
+    if (!state.waste.length) return false;
+    const card = state.waste[state.waste.length - 1];
+    for (let dest = 0; dest < state.tableau.length; dest += 1) {
+      if (canPlaceOnTableau(card, state.tableau[dest])) {
+        state.waste.pop();
+        state.tableau[dest].push(card);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function moveTableauStack() {
+    for (let src = 0; src < state.tableau.length; src += 1) {
+      const col = state.tableau[src];
+      for (let i = 0; i < col.length; i += 1) {
+        const card = col[i];
+        if (!card.faceUp) continue;
+        for (let dest = 0; dest < state.tableau.length; dest += 1) {
+          if (dest === src) continue;
+          if (canPlaceOnTableau(card, state.tableau[dest])) {
+            const moving = col.splice(i);
+            state.tableau[dest].push(...moving);
+            flipTailIfNeeded(src);
+            return true;
+          }
+        }
+        break;
+      }
+    }
+    return false;
+  }
+
+  function flipTopFaceDown() {
+    for (let colIdx = 0; colIdx < state.tableau.length; colIdx += 1) {
+      const col = state.tableau[colIdx];
+      if (col.length === 0) continue;
+      const top = col[col.length - 1];
+      if (!top.faceUp) {
+        top.faceUp = true;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function performOneAutoStep() {
+    return (
+      moveWasteToFoundation() ||
+      moveTableauTopToFoundation() ||
+      moveWasteToTableau() ||
+      moveTableauStack() ||
+      flipTopFaceDown() ||
+      drawFromStock() ||
+      recycleWasteToStock()
+    );
+  }
+
+  function autoplayGame() {
+    let iterations = 0;
+    let moved = false;
+    while (iterations < 500 && performOneAutoStep()) {
+      moved = true;
+      iterations += 1;
+    }
+    state.selected = null;
+    render();
+    if (Object.values(state.foundations).every(p => p.length === 13)) {
+      setStatus('Autoplay: You win! 🎉');
+    } else if (moved) {
+      setStatus('Autoplay finished available moves.');
+    } else {
+      setStatus('Autoplay found nothing to do.');
+    }
+  }
+
   document.getElementById('new-game').addEventListener('click', () => {
     state.gameNumber += 1;
     deal();
@@ -568,6 +687,10 @@
       e.preventDefault();
       const hint = findHintMove();
       setStatus(hint || 'No moves remain — start a new game.');
+    }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyA') {
+      e.preventDefault();
+      autoplayGame();
     }
   });
 
